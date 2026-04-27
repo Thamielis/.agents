@@ -1,0 +1,42 @@
+\
+<#
+.SYNOPSIS
+Starts a minimal Pode + Pode.Web dashboard with a table and a progress bar.
+
+.DESCRIPTION
+Template. This is intentionally small and uses built-in themes and components.
+
+#>
+param(
+    [Parameter()]
+    [ValidateRange(1, 65535)]
+    [int]$Port = 8443
+)
+
+Import-Module Pode -ErrorAction Stop
+Import-Module Pode.Web -ErrorAction Stop
+
+Start-PodeServer {
+    Add-PodeEndpoint -Address '*' -Port $Port -Protocol Http
+
+    Use-PodeWebTemplates -Title '{{AppName}}' -Theme Dark
+
+    Add-PodeWebPage -Name 'Home' -Icon 'Home' -ScriptBlock {
+        New-PodeWebContainer -Content @(
+            New-PodeWebCard -Name 'Status' -Content @(
+                New-PodeWebText -Value 'Dashboard is running.'
+            )
+
+            New-PodeWebCard -Name 'Data' -Content @(
+                New-PodeWebProgress -Name 'Load' -Value 0 -Striped -Animated
+
+                New-PodeWebTable -Name 'Items' -Columns @('Name','Value') -ScriptBlock {
+                    # TODO: Replace with real data retrieval (cache as needed)
+                    @(
+                        @{ Name = 'Example'; Value = '42' }
+                    )
+                }
+            )
+        )
+    }
+}

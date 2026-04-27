@@ -1,0 +1,35 @@
+<div class="p-6 space-y-4">
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-semibold">{{FeatureTitle}}</h1>
+
+    <button
+      class="px-3 py-2 rounded-lg border"
+      hx-get="/{{FeatureRoute}}/Form"
+      hx-target="#Modal"
+      hx-swap="innerHTML">
+      New {{FeatureSingular}}
+    </button>
+  </div>
+
+  <div class="flex gap-2">
+    <input
+      name="q"
+      class="w-full px-3 py-2 rounded-lg border"
+      placeholder="Search..."
+      hx-get="/{{FeatureRoute}}/Table"
+      hx-trigger="keyup changed delay:300ms"
+      hx-target="#Table"
+      hx-include="[name='q']" />
+  </div>
+
+  <div id="Table"
+       hx-get="/{{FeatureRoute}}/Table"
+       hx-trigger="load"
+       hx-swap="innerHTML"
+       class="rounded-xl border overflow-hidden">
+    <div class="p-4 text-sm opacity-70">Loading…</div>
+  </div>
+
+  <div id="Modal"></div>
+  <div id="Toast" class="fixed bottom-4 right-4"></div>
+</div>

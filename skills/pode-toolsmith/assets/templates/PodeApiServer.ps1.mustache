@@ -1,0 +1,36 @@
+\
+<#
+.SYNOPSIS
+Starts a minimal Pode API server with structured routing and health endpoints.
+
+.DESCRIPTION
+Template. Replace placeholders and add routes in src/Routes.
+
+#>
+param(
+    [Parameter()]
+    [ValidateRange(1, 65535)]
+    [int]$Port = 8080
+)
+
+Import-Module Pode -ErrorAction Stop
+
+Start-PodeServer {
+    Add-PodeEndpoint -Address '*' -Port $Port -Protocol Http
+
+    # Health
+    Add-PodeRoute -Method Get -Path '/health' -ScriptBlock {
+        Write-PodeJsonResponse -Value @{
+            Status = 'OK'
+            Utc    = (Get-Date).ToUniversalTime().ToString('o')
+        }
+    }
+
+    # Example API
+    Add-PodeRoute -Method Get -Path '/api/v1/info' -ScriptBlock {
+        Write-PodeJsonResponse -Value @{
+            Name    = '{{AppName}}'
+            Version = '{{Version}}'
+        }
+    }
+}

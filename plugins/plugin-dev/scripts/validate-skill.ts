@@ -1,0 +1,908 @@
+#!/usr/bin/env bun
+/**
+ * validate-skill.ts - Comprehensive skill validator
+ *
+ * Validates skills against skill-architecture standards:
+ * - YAML frontmatter (name, description, allowed-tools)
+ * - Description format (TRIGGERS keyword, length)
+ * - S1/S2/S3 conformance standards
+ * - Link portability (STRICT: only /docs/adr/ and /docs/design/ allowed)
+ * - Bash compatibility (heredoc wrapper for bash-specific syntax)
+ *
+ * Usage:
+ *   bun run scripts/validate-skill.ts <path> [--fix] [--interactive] [-v]
+ *
+ * Exit codes:
+ *   0 = All validations passed
+ *   1 = Violations found (errors)
+ *   2 = Fatal error (invalid path, no SKILL.md)
+ *
+ * ADR: /docs/adr/2025-12-28-skill-validator-typescript-migration.md
+ */
+
+import { existsSync, readFileSync, readdirSync, statSync } from "fs";
+import { join, resolve, basename, relative } from "path";
+import { parseArgs } from "util";
+import { Glob } from "bun";
+
+import { parseMarkdown, extractLinks, extractBashBlocks, countLines } from "./lib/markdown.js";
+import {
+  SKILL_NAME,
+  hasBashSpecificSyntax,
+  hasHeredocWrapper,
+  isDocExample,
+} from "./lib/patterns.js";
+import {
+  ALLOWED_REPO_PATHS,
+  MAX_DESCRIPTION_LENGTH,
+  MAX_SKILL_LINES,
+  REQUIRED_FRONTMATTER_FIELDS,
+  SKIP_DIRECTORIES,
+  isAllowedRepoPath,
+  FILE_ENCODING,
+  DESCRIPTION_LENGTH_OPTIONS,
+  ALLOWED_TOOLS_OPTIONS,
+  S2_COMPLIANCE_OPTIONS,
+} from "./lib/constants.js";
+import {
+  printResults,
+  printAskUserQuestions,
+  printSummary,
+  printLinkViolations,
+  printBashViolations,
+  logError,
+  fatalError,
+  logDebug,
+} from "./lib/output.js";
+import type {
+  ValidationResult,
+  SkillValidation,
+  SkillFrontmatter,
+  LinkViolation,
+  BashViolation,
+  ExitCode,
+} from "./lib/types.js";
+
+// ============================================================================
+// CLI Argument Parsing
+// ============================================================================
+
+const { values, positionals } = parseArgs({
+  args: Bun.argv.slice(2),
+  options: {
+    fix: { type: "boolean", default: false },
+    interactive: { type: "boolean", default: false },
+    verbose: { type: "boolean", short: "v", default: false },
+    strict: { type: "boolean", default: false },
+    "project-local": { type: "boolean", default: false },
+    "skip-bash": { type: "boolean", default: false },
+    help: { type: "boolean", short: "h", default: false },
+  },
+  allowPositionals: true,
+});
+
+if (values.help) {
+  console.log(`
+Usage: bun run validate-skill.ts <path> [options]
+
+Arguments:
+  path              Path to skill directory, SKILL.md, or plugin directory
+
+Options:
+  --fix             Show fix suggestions for violations
+  --interactive     Generate AskUserQuestion JSON for clarifications
+  -v, --verbose     Show all checks including passed ones
+  --strict          Treat warnings as errors
+  --project-local   Treat as project-local skill (relaxed link rules)
+                    Auto-detected for paths containing .claude/skills/
+  --skip-bash       Skip bash compatibility checks (for documentation skills)
+  -h, --help        Show this help message
+
+Exit codes:
+  0  All validations passed
+  1  Violations found (errors)
+  2  Fatal error (invalid path, parse error)
+
+Link Policy:
+  Marketplace plugins:  Only ./relative, /docs/adr/*, /docs/design/* allowed
+  Project-local skills: Any /... repo path allowed (--project-local)
+
+Bash Policy:
+  Marketplace plugins:  Heredoc wrapper required for bash-specific syntax
+  --skip-bash:         Skip bash checks (when blocks are user docs, not Claude-executed)
+`);
+  process.exit(0);
+}
+
+// Auto-detect project-local skills from path
+function isProjectLocalSkill(path: string): boolean {
+  // Explicit flag takes precedence
+  if (values["project-local"]) return true;
+  // Auto-detect .claude/skills/ pattern
+  return /\.claude\/skills\//.test(path);
+}
+
+// ============================================================================
+// Frontmatter Validation
+// ============================================================================
+
+function validateFrontmatter(
+  frontmatter: SkillFrontmatter | null,
+  frontmatterError: string
+): ValidationResult[] {
+  const results: ValidationResult[] = [];
+
+  // Check frontmatter exists
+  if (frontmatterError) {
+    results.push({
+      check: "yaml_frontmatter",
+      passed: false,
+      message: frontmatterError,
+      severity: "error",
+      fixSuggestion: "Add YAML frontmatter:\n---\nname: skill-name\ndescription: Use when user wants to... describe trigger scenarios here.\n---",
+    });
+    return results;
+  }
+
+  if (!frontmatter) {
+    results.push({
+      check: "yaml_frontmatter",
+      passed: false,
+      message: "No frontmatter found",
+      severity: "error",
+    });
+    return results;
+  }
+
+  results.push({
+    check: "yaml_frontmatter",
+    passed: true,
+    message: "Valid YAML frontmatter found",
+    severity: "info",
+  });
+
+  // Check required fields
+  if (!frontmatter.name) {
+    results.push({
+      check: "yaml_name",
+      passed: false,
+      message: "Missing required 'name' field in frontmatter",
+      severity: "error",
+      fixSuggestion: "Add 'name: your-skill-name' to frontmatter",
+    });
+  } else {
+    // Validate name format
+    if (!SKILL_NAME.test(frontmatter.name)) {
+      results.push({
+        check: "yaml_name_format",
+        passed: false,
+        message: `Invalid skill name format: '${frontmatter.name}'. Must be lowercase letters, numbers, and hyphens only.`,
+        severity: "error",
+        fixSuggestion: `Use format: ${frontmatter.name.toLowerCase().replace(/[^a-z0-9-]/g, "-")}`,
+      });
+    } else {
+      results.push({
+        check: "yaml_name",
+        passed: true,
+        message: `Skill name: ${frontmatter.name}`,
+        severity: "info",
+      });
+    }
+  }
+
+  // Check description
+  if (!frontmatter.description) {
+    results.push({
+      check: "yaml_description",
+      passed: false,
+      message: "Missing required 'description' field in frontmatter",
+      severity: "error",
+      fixSuggestion: "Add 'description: Brief description. TRIGGERS - keyword1, keyword2.'",
+    });
+  } else {
+    results.push({
+      check: "yaml_description",
+      passed: true,
+      message: "Description field present",
+      severity: "info",
+    });
+
+    // Check description length
+    if (frontmatter.description.length > MAX_DESCRIPTION_LENGTH) {
+      results.push({
+        check: "description_length",
+        passed: false,
+        message: `Description exceeds ${MAX_DESCRIPTION_LENGTH} characters (${frontmatter.description.length} chars)`,
+        severity: "warning",
+        fixSuggestion: `Trim to ${MAX_DESCRIPTION_LENGTH} characters`,
+        needsClarification: true,
+        clarificationQuestion: `Description exceeds ${MAX_DESCRIPTION_LENGTH} chars. How should we handle this?`,
+        clarificationOptions: DESCRIPTION_LENGTH_OPTIONS,
+      });
+    }
+
+    // Check for discoverability pattern: "Use when" (preferred) or "TRIGGERS" (legacy)
+    if (!/\buse when\b/i.test(frontmatter.description) && !/triggers/i.test(frontmatter.description)) {
+      results.push({
+        check: "description_triggers",
+        passed: false,
+        message: "Description missing discoverability pattern — add 'Use when user wants to...' phrasing",
+        severity: "warning",
+        fixSuggestion: "Start or include 'Use when user wants to...' in description for auto-triggering",
+      });
+    }
+  }
+
+  // Check allowed-tools (recommended)
+  if (!frontmatter["allowed-tools"]) {
+    results.push({
+      check: "allowed_tools",
+      passed: false,
+      message: "Missing 'allowed-tools' field (security recommendation)",
+      severity: "warning",
+      fixSuggestion: "Add 'allowed-tools: [Read, Grep, Glob]' to limit tool access",
+      needsClarification: true,
+      clarificationQuestion: "No allowed-tools specified. What tools should this skill access?",
+      clarificationOptions: ALLOWED_TOOLS_OPTIONS,
+    });
+  } else {
+    results.push({
+      check: "allowed_tools",
+      passed: true,
+      message: "allowed-tools specified",
+      severity: "info",
+    });
+  }
+
+  return results;
+}
+
+// ============================================================================
+// Structure Validation
+// ============================================================================
+
+function validateStructure(skillPath: string, content: string): ValidationResult[] {
+  const results: ValidationResult[] = [];
+
+  // Check SKILL.md exists (already verified before calling this)
+  results.push({
+    check: "skill_md_exists",
+    passed: true,
+    message: "SKILL.md found",
+    severity: "info",
+  });
+
+  // Count lines
+  const lineCount = countLines(content);
+  const hasReferences = existsSync(join(skillPath, "references"));
+
+  if (lineCount > MAX_SKILL_LINES) {
+    if (hasReferences) {
+      // S2 compliant - progressive disclosure
+      results.push({
+        check: "s2_progressive_disclosure",
+        passed: true,
+        message: `SKILL.md is ${lineCount} lines with references/ directory (S2 compliant)`,
+        severity: "info",
+      });
+    } else {
+      // S1 violation
+      results.push({
+        check: "s1_line_count",
+        passed: false,
+        message: `SKILL.md exceeds ${MAX_SKILL_LINES} lines (${lineCount} lines) without references/ directory`,
+        severity: "warning",
+        fixSuggestion: "Create references/ directory and move detailed content there",
+        needsClarification: true,
+        clarificationQuestion: `SKILL.md is ${lineCount} lines without references/. How to proceed?`,
+        clarificationOptions: S2_COMPLIANCE_OPTIONS,
+      });
+    }
+  } else {
+    results.push({
+      check: "s1_line_count",
+      passed: true,
+      message: `SKILL.md is ${lineCount} lines (within S1 limit)`,
+      severity: "info",
+    });
+  }
+
+  return results;
+}
+
+// ============================================================================
+// Link Validation
+// ============================================================================
+
+async function validateLinks(
+  skillPath: string,
+  projectLocal: boolean = false
+): Promise<{ results: ValidationResult[]; violations: LinkViolation[] }> {
+  const violations: LinkViolation[] = [];
+  const results: ValidationResult[] = [];
+
+  // Find all markdown files
+  const glob = new Glob("**/*.md");
+  const mdFiles: string[] = [];
+
+  for await (const file of glob.scan({ cwd: skillPath, absolute: true })) {
+    const relativePath = relative(skillPath, file);
+    const firstDir = relativePath.split("/")[0];
+    if (!SKIP_DIRECTORIES.has(firstDir)) {
+      mdFiles.push(file);
+    }
+  }
+
+  // Scan each file
+  for (const filePath of mdFiles) {
+    try {
+      const content = readFileSync(filePath, FILE_ENCODING);
+      const links = extractLinks(content);
+
+      for (const link of links) {
+        const url = link.href;
+
+        // Skip allowed patterns
+        if (
+          url.startsWith("./") ||
+          url.startsWith("../") ||
+          url.startsWith("#") ||
+          url.startsWith("http://") ||
+          url.startsWith("https://") ||
+          url.startsWith("mailto:") ||
+          url.startsWith("{") ||
+          url.startsWith("{{")
+        ) {
+          // Check for GitHub URLs to this repo
+          if (/github\.com\/terrylica\/cc-skills\/blob\//.test(url)) {
+            violations.push({
+              filePath,
+              lineNumber: link.lineNumber,
+              column: link.column,
+              linkText: link.text,
+              linkUrl: url,
+              violationType: "github_url",
+              suggestedFix: "Use relative path (./) or allowed repo path (/docs/adr/, /docs/design/)",
+            });
+          }
+          continue;
+        }
+
+        // Check repo-relative paths (starting with /)
+        if (url.startsWith("/")) {
+          // Project-local skills can use any repo path
+          if (projectLocal) {
+            continue;
+          }
+          // Marketplace plugins: only /docs/adr/ and /docs/design/ allowed
+          if (!isAllowedRepoPath(url)) {
+            violations.push({
+              filePath,
+              lineNumber: link.lineNumber,
+              column: link.column,
+              linkText: link.text,
+              linkUrl: url,
+              violationType: "forbidden_path",
+              suggestedFix: suggestLinkFix(url),
+            });
+          }
+          continue;
+        }
+
+        // Bare paths (no leading ./ or /) - violation
+        violations.push({
+          filePath,
+          lineNumber: link.lineNumber,
+          column: link.column,
+          linkText: link.text,
+          linkUrl: url,
+          violationType: "bare_path",
+          suggestedFix: `Use explicit relative path: ./${url}`,
+        });
+      }
+    } catch (err) {
+      logDebug(`Could not read ${filePath}: ${err}`);
+    }
+  }
+
+  // Create summary result
+  if (violations.length === 0) {
+    results.push({
+      check: "link_portability",
+      passed: true,
+      message: "All links use appropriate path formats",
+      severity: "info",
+    });
+  } else {
+    const forbiddenCount = violations.filter((v) => v.violationType === "forbidden_path").length;
+    const githubCount = violations.filter((v) => v.violationType === "github_url").length;
+    const bareCount = violations.filter((v) => v.violationType === "bare_path").length;
+
+    const parts = [];
+    if (forbiddenCount > 0) parts.push(`${forbiddenCount} forbidden paths`);
+    if (githubCount > 0) parts.push(`${githubCount} GitHub URLs`);
+    if (bareCount > 0) parts.push(`${bareCount} bare paths`);
+
+    results.push({
+      check: "link_portability",
+      passed: false,
+      message: `Found ${violations.length} link violation(s): ${parts.join(", ")}`,
+      severity: "error",
+      fixSuggestion: projectLocal
+        ? "Use relative paths (./references/*) for portability, or keep repo paths for project-specific docs"
+        : "Only /docs/adr/ and /docs/design/ allowed. Copy other files to references/",
+    });
+  }
+
+  return { results, violations };
+}
+
+/**
+ * Suggest fix for a link violation
+ */
+function suggestLinkFix(url: string): string {
+  if (url.startsWith("/docs/") && !isAllowedRepoPath(url)) {
+    const filename = url.split("/").pop();
+    return `Copy to references/${filename} and use ./references/${filename}`;
+  }
+
+  const filename = url.split("/").pop();
+  return `Copy file to skill directory: ./references/${filename}`;
+}
+
+// ============================================================================
+// Bash Validation
+// ============================================================================
+
+function validateBashBlocks(
+  skillPath: string
+): { results: ValidationResult[]; violations: BashViolation[] } {
+  const violations: BashViolation[] = [];
+  const results: ValidationResult[] = [];
+
+  // Find all markdown files
+  const mdFiles: string[] = [];
+
+  function walkDir(dir: string): void {
+    try {
+      const entries = readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isDirectory() && !SKIP_DIRECTORIES.has(entry.name)) {
+          walkDir(join(dir, entry.name));
+        } else if (entry.isFile() && entry.name.endsWith(".md")) {
+          mdFiles.push(join(dir, entry.name));
+        }
+      }
+    } catch {
+      // Continue silently
+    }
+  }
+
+  walkDir(skillPath);
+
+  // Scan each file for bash blocks
+  for (const filePath of mdFiles) {
+    try {
+      const content = readFileSync(filePath, FILE_ENCODING);
+      const bashBlocks = extractBashBlocks(content);
+
+      for (const block of bashBlocks) {
+        // Skip documentation examples
+        if (isDocExample(block.text)) {
+          continue;
+        }
+
+        // Check if needs wrapper
+        if (hasBashSpecificSyntax(block.text) && !hasHeredocWrapper(block.text)) {
+          violations.push({
+            filePath,
+            lineNumber: block.lineNumber,
+            issue: "Bash block contains bash-specific syntax without heredoc wrapper",
+            severity: "error",
+            pattern: detectBashPattern(block.text),
+          });
+        }
+
+        // Check for grep -P (warning only)
+        if (/grep\s+[^|]*-[a-zA-Z]*P/.test(block.text)) {
+          violations.push({
+            filePath,
+            lineNumber: block.lineNumber,
+            issue: "grep -P (Perl regex) is not portable - use grep -E with awk instead",
+            severity: "warning",
+            pattern: "grep -P",
+          });
+        }
+      }
+    } catch (err) {
+      logDebug(`Could not read ${filePath}: ${err}`);
+    }
+  }
+
+  // Create summary result
+  const errors = violations.filter((v) => v.severity === "error");
+  const warnings = violations.filter((v) => v.severity === "warning");
+
+  if (errors.length === 0) {
+    results.push({
+      check: "bash_compatibility",
+      passed: true,
+      message: "All bash blocks properly wrapped for zsh compatibility",
+      severity: "info",
+    });
+  } else {
+    results.push({
+      check: "bash_compatibility",
+      passed: false,
+      message: `Found ${errors.length} bash block(s) without heredoc wrapper`,
+      severity: "error",
+      fixSuggestion: "Wrap with: /usr/bin/env bash << 'EOF'\\n...\\nEOF",
+    });
+  }
+
+  if (warnings.length > 0) {
+    results.push({
+      check: "bash_portability",
+      passed: false,
+      message: `Found ${warnings.length} bash portability warning(s)`,
+      severity: "warning",
+    });
+  }
+
+  return { results, violations };
+}
+
+/**
+ * Detect which bash pattern triggered the violation
+ */
+function detectBashPattern(block: string): string {
+  if (/\$\([^)]+\)/.test(block)) return "$(...)";
+  if (/\[\[/.test(block)) return "[[...]]";
+  if (/^\s*declare\s/m.test(block)) return "declare";
+  if (/^\s*local\s/m.test(block)) return "local";
+  if (/^\s*function\s/m.test(block)) return "function";
+  if (/\$\{[^}]+\}/.test(block)) return "dollar-brace expansion";
+  return "bash-specific syntax";
+}
+
+// ============================================================================
+// Self-Evolution Validation
+// ============================================================================
+
+/**
+ * Canonical reflection principles — the 5 steps every skill must have.
+ * Checked by substring match so minor whitespace differences don't false-positive.
+ */
+const REFLECTION_PRINCIPLES = [
+  "**Locate yourself.**",
+  "**What failed?**",
+  "**What worked better than expected?**",
+  "**What drifted?**",
+  "**Log it.**",
+] as const;
+
+/**
+ * Check if a skill includes Post-Execution Reflection.
+ *
+ * ALL skills must have a Post-Execution Reflection section — workflow, task,
+ * and capability patterns alike. Task-pattern skills are just as susceptible
+ * to drift (scripts change interfaces, parameters get added, errors change).
+ *
+ * Stepwise skills additionally require:
+ *   - The canonical 5-principle template (Locate, Failed, Worked, Drifted, Log)
+ *   - A references/evolution-log.md file
+ *
+ * Task-pattern skills need at minimum:
+ *   - A "Post-Execution Reflection" section header
+ *   - Self-correction instructions (command success, parameter drift, workarounds)
+ *
+ * Reference: post-execution-reflection.md → "Validation Requirements"
+ */
+function validateSelfEvolution(skillPath: string, content: string): ValidationResult[] {
+  const results: ValidationResult[] = [];
+
+  // Detect stepwise execution: [Execute] labels OR phase-numbered sections
+  const hasExecuteLabels = /\[Execute\]/i.test(content);
+  const hasPhaseNumbers = /^##+ Phase \d/m.test(content);
+  const isStepwise = hasExecuteLabels || hasPhaseNumbers;
+
+  // Check 0: Self-Evolution reminder at TOP of skill (primacy position)
+  // Must appear in first 25 lines of body (after frontmatter)
+  const bodyLines = content.replace(/^---[\s\S]*?---\n?/, "").split("\n");
+  const top25 = bodyLines.slice(0, 25).join("\n");
+  const hasTopReminder = /self-evolv/i.test(top25);
+
+  if (!hasTopReminder) {
+    results.push({
+      check: "self_evolution_top",
+      passed: false,
+      message: "Skill missing Self-Evolving reminder at top — must appear in first 25 lines after frontmatter",
+      severity: "warning",
+      fixSuggestion:
+        'Add after H1 title: > **Self-Evolving Skill**: This skill improves through use. ' +
+        "If instructions are wrong, parameters drifted, or a workaround was needed — fix this file immediately, don't defer. " +
+        "Only update for real, reproducible issues.",
+    });
+  } else {
+    results.push({
+      check: "self_evolution_top",
+      passed: true,
+      message: "Self-Evolving reminder present at top (primacy position)",
+      severity: "info",
+    });
+  }
+
+  // Check 1: Post-Execution Reflection section header (required for ALL skills)
+  const hasReflectionSection = /^##\s+Post-Execution Reflection/m.test(content);
+
+  // Check 1b: Reflection must be at BOTTOM of file (recency position)
+  if (hasReflectionSection) {
+    const lines = content.split("\n");
+    const totalLines = lines.length;
+    let reflectionLine = 0;
+    for (let i = 0; i < totalLines; i++) {
+      if (/^##\s+Post-Execution Reflection/.test(lines[i])) {
+        reflectionLine = i + 1; // 1-indexed
+      }
+    }
+    const linesAfter = totalLines - reflectionLine;
+    if (linesAfter > 15) {
+      results.push({
+        check: "reflection_bottom_placement",
+        passed: false,
+        message: `Post-Execution Reflection is ${linesAfter} lines from end — must be the last section (within 15 lines of EOF)`,
+        severity: "warning",
+        fixSuggestion: "Move the Post-Execution Reflection section to the very end of SKILL.md for maximum recency effect.",
+      });
+    } else {
+      results.push({
+        check: "reflection_bottom_placement",
+        passed: true,
+        message: "Post-Execution Reflection at bottom (recency position)",
+        severity: "info",
+      });
+    }
+  }
+
+  if (!hasReflectionSection) {
+    results.push({
+      check: "post_execution_reflection",
+      passed: false,
+      message: "Skill missing 'Post-Execution Reflection' section — all skills must be self-evolving",
+      severity: "warning",
+      fixSuggestion:
+        "Add a '## Post-Execution Reflection' section to SKILL.md. " +
+        "See skill-architecture for workflow (5-principle) and task-pattern (3-check) templates.",
+    });
+  } else {
+    results.push({
+      check: "post_execution_reflection",
+      passed: true,
+      message: "Post-Execution Reflection section present",
+      severity: "info",
+    });
+
+    // Check 2: Canonical 5-principle template (stepwise skills only)
+    // Task-pattern skills use a lighter 3-check template — don't enforce the 5 principles on them
+    if (isStepwise) {
+      const missingPrinciples = REFLECTION_PRINCIPLES.filter(
+        (principle) => !content.includes(principle)
+      );
+
+      if (missingPrinciples.length > 0) {
+        results.push({
+          check: "reflection_canonical_template",
+          passed: false,
+          message: `Stepwise skill reflection uses non-canonical template — missing: ${missingPrinciples.join(", ")}`,
+          severity: "warning",
+          fixSuggestion:
+            "Replace with the canonical 5-principle template (steps 0-4). " +
+            "See post-execution-reflection.md for the workflow template.",
+        });
+      } else {
+        results.push({
+          check: "reflection_canonical_template",
+          passed: true,
+          message: "Post-Execution Reflection uses canonical 5-principle template",
+          severity: "info",
+        });
+      }
+    }
+  }
+
+  // Check 3: evolution-log.md existence (stepwise skills only — task-pattern skills don't need it)
+  if (isStepwise) {
+    const hasEvolutionLog = existsSync(join(skillPath, "references", "evolution-log.md"));
+
+    if (!hasEvolutionLog) {
+      results.push({
+        check: "evolution_log_exists",
+        passed: false,
+        message: "Stepwise skill missing references/evolution-log.md for tracking empirical changes",
+        severity: "warning",
+        fixSuggestion:
+          "Create references/evolution-log.md to track changes discovered through execution.",
+      });
+    } else {
+      results.push({
+        check: "evolution_log_exists",
+        passed: true,
+        message: "evolution-log.md present",
+        severity: "info",
+      });
+    }
+  }
+
+  return results;
+}
+
+// ============================================================================
+// Main Validation
+// ============================================================================
+
+async function validateSkill(skillPath: string, projectLocal: boolean = false, skipBash: boolean = false): Promise<SkillValidation> {
+  const validation: SkillValidation = {
+    skillPath,
+    skillName: "",
+    results: [],
+    linkViolations: [],
+    bashViolations: [],
+  };
+
+  const skillMdPath = join(skillPath, "SKILL.md");
+  if (!existsSync(skillMdPath)) {
+    validation.results.push({
+      check: "skill_md_exists",
+      passed: false,
+      message: `SKILL.md not found at ${skillPath}`,
+      severity: "error",
+    });
+    return validation;
+  }
+
+  const content = readFileSync(skillMdPath, FILE_ENCODING);
+  const parsed = parseMarkdown(content);
+
+  if (parsed.frontmatter?.name) {
+    validation.skillName = parsed.frontmatter.name;
+  } else {
+    validation.skillName = basename(skillPath);
+  }
+
+  // Run all validators
+  validation.results.push(
+    ...validateFrontmatter(parsed.frontmatter, parsed.frontmatterError)
+  );
+  validation.results.push(...validateStructure(skillPath, content));
+  validation.results.push(...validateSelfEvolution(skillPath, content));
+
+  const linkResults = await validateLinks(skillPath, projectLocal);
+  validation.results.push(...linkResults.results);
+  validation.linkViolations = linkResults.violations;
+
+  if (skipBash) {
+    validation.results.push({
+      check: "bash_compatibility",
+      passed: true,
+      message: "Bash compatibility check skipped (--skip-bash)",
+      severity: "info",
+    });
+  } else {
+    const bashResults = validateBashBlocks(skillPath);
+    validation.results.push(...bashResults.results);
+    validation.bashViolations = bashResults.violations;
+  }
+
+  return validation;
+}
+
+// ============================================================================
+// Entry Point
+// ============================================================================
+
+async function main(): Promise<void> {
+  if (positionals.length < 1) {
+    console.log("Usage: bun run validate-skill.ts <path> [--fix] [--interactive] [-v]");
+    console.log("Run with --help for more options.");
+    process.exit(2);
+  }
+
+  const inputPath = resolve(positionals[0]);
+
+  if (!existsSync(inputPath)) {
+    fatalError("path resolution", new Error(`Path not found: ${inputPath}`));
+  }
+
+  // Determine skill path(s)
+  let skillPaths: string[] = [];
+
+  const stat = statSync(inputPath);
+
+  if (stat.isFile() && basename(inputPath) === "SKILL.md") {
+    // Direct SKILL.md file
+    skillPaths = [resolve(inputPath, "..")];
+  } else if (stat.isDirectory() && existsSync(join(inputPath, "SKILL.md"))) {
+    // Skill directory
+    skillPaths = [inputPath];
+  } else if (stat.isDirectory() && existsSync(join(inputPath, "skills"))) {
+    // Plugin directory - validate all skills
+    const skillsDir = join(inputPath, "skills");
+    for (const entry of readdirSync(skillsDir, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        const skillDir = join(skillsDir, entry.name);
+        if (existsSync(join(skillDir, "SKILL.md"))) {
+          skillPaths.push(skillDir);
+        }
+      }
+    }
+  } else {
+    fatalError("path resolution", new Error(`No SKILL.md found at ${inputPath}`));
+  }
+
+  if (skillPaths.length === 0) {
+    fatalError("path resolution", new Error(`No skills found to validate at ${inputPath}`));
+  }
+
+  // Validate all skills
+  const validations: SkillValidation[] = [];
+
+  for (const skillPath of skillPaths) {
+    // Auto-detect project-local skills
+    const projectLocal = isProjectLocalSkill(skillPath);
+    const skipBash = values["skip-bash"] ?? false;
+
+    if (projectLocal && values.verbose) {
+      logDebug(`Project-local skill detected: ${skillPath}`);
+      logDebug("Using relaxed link rules (any repo path allowed)");
+    }
+
+    const validation = await validateSkill(skillPath, projectLocal, skipBash);
+    validations.push(validation);
+
+    printResults(validation, { showFix: values.fix, verbose: values.verbose });
+
+    if (validation.linkViolations.length > 0 && values.verbose) {
+      console.log();
+      printLinkViolations(validation.linkViolations, validation.skillPath);
+    }
+
+    if (validation.bashViolations.length > 0 && values.verbose) {
+      console.log();
+      printBashViolations(validation.bashViolations, validation.skillPath);
+    }
+
+    if (values.interactive) {
+      printAskUserQuestions(validation);
+    }
+  }
+
+  // Print summary for multiple skills
+  if (validations.length > 1) {
+    printSummary(validations, { strict: values.strict });
+  }
+
+  // Determine exit code
+  let hasErrors = false;
+  let hasWarnings = false;
+
+  for (const v of validations) {
+    if (v.results.some((r) => !r.passed && r.severity === "error")) {
+      hasErrors = true;
+    }
+    if (v.results.some((r) => !r.passed && r.severity === "warning")) {
+      hasWarnings = true;
+    }
+  }
+
+  if (hasErrors) {
+    process.exit(1);
+  } else if (hasWarnings && values.strict) {
+    process.exit(1);
+  } else {
+    process.exit(0);
+  }
+}
+
+main().catch((err) => {
+  fatalError("main execution", err);
+});

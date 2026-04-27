@@ -1,0 +1,44 @@
+{
+  "description": "GitHub CLI enforcement - soft blocks WebFetch for github.com URLs, blocks writes to non-owned repos, blocks anchor links in issues, reminds to optimize issue titles",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "WebFetch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/webfetch-github-guard.sh",
+            "timeout": 5000
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/gh-repo-identity-guard.mjs",
+            "timeout": 10000
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/gh-issue-no-anchors.mjs",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/gh-issue-title-reminder.mjs",
+            "timeout": 10000
+          }
+        ]
+      }
+    ]
+  }
+}

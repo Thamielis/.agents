@@ -1,0 +1,34 @@
+\
+<#
+.SYNOPSIS
+Podex-style route template for htmx page + fragment.
+
+.DESCRIPTION
+Return full page on initial request, and a fragment when requested via htmx.
+
+#>
+param()
+
+# Example: Add-PodeRoute -Method Get -Path '/things' -ScriptBlock { . $PSScriptRoot/Things.ps1 }
+
+$IsHtmx = $false
+if ($WebEvent -and $WebEvent.Request -and $WebEvent.Request.Headers) {
+    $IsHtmx = [bool]($WebEvent.Request.Headers['HX-Request'])
+}
+
+$Model = @{
+    Title = '{{Title}}'
+    Items = @(
+        @{ Name = 'Alpha'; Value = 1 }
+        @{ Name = 'Beta';  Value = 2 }
+    )
+}
+
+if ($IsHtmx) {
+    # Return a partial fragment template
+    Write-PodeHtmlResponse -Value (ConvertFrom-MustacheTemplate -Path (Join-Path $PSScriptRoot '..\\views\\things.partial.mustache') -Data $Model)
+}
+else {
+    # Return the full page template
+    Write-PodeHtmlResponse -Value (ConvertFrom-MustacheTemplate -Path (Join-Path $PSScriptRoot '..\\views\\things.page.mustache') -Data $Model)
+}

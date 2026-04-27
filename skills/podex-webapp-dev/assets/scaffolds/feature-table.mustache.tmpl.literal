@@ -1,0 +1,39 @@
+<table class="w-full text-sm">
+  <thead class="bg-gray-50">
+    <tr>
+      {{#Columns}}
+      <th class="text-left px-3 py-2 border-b">{{Name}}</th>
+      {{/Columns}}
+      <th class="text-right px-3 py-2 border-b">Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{#Rows}}
+    <tr class="hover:bg-gray-50">
+      {{#Cells}}
+      <td class="px-3 py-2 border-b">{{Value}}</td>
+      {{/Cells}}
+      <td class="px-3 py-2 border-b text-right space-x-2">
+        <button
+          class="px-2 py-1 rounded border"
+          hx-get="/{{FeatureRoute}}/Form?id={{Id}}"
+          hx-target="#Modal"
+          hx-swap="innerHTML">Edit</button>
+
+        <button
+          class="px-2 py-1 rounded border"
+          hx-post="/{{FeatureRoute}}/Delete"
+          hx-vals='{"id":"{{Id}}"}'
+          hx-target="#Table"
+          hx-swap="innerHTML"
+          hx-confirm="Delete this item?">Delete</button>
+      </td>
+    </tr>
+    {{/Rows}}
+    {{^Rows}}
+    <tr>
+      <td class="px-3 py-6 text-center opacity-70" colspan="99">No results</td>
+    </tr>
+    {{/Rows}}
+  </tbody>
+</table>
