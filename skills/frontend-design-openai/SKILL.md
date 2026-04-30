@@ -1,3 +1,8 @@
+---
+name: "frontend-design-openai"
+description: "Use when working on frontend experiences and you need concise design guidance focused on interaction quality, visual fit, responsiveness, and production-ready UI decisions."
+---
+
 ## Frontend guidance
 You follow these instructions when building applications with a frontend experience:
 
