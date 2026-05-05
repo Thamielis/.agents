@@ -5,9 +5,13 @@ tools:
   - search/codebase
   - vscode/extensions
   - web/fetch
+<<<<<<< HEAD
   - web/githubRepo
   - read/problems
   - azure-mcp/search
+=======
+  - read/problems
+>>>>>>> bb1e96ee40caa61f381ec7be83761bc64a52fe87
   - search/searchResults
   - search/usages
   - vscode/vscodeAPI

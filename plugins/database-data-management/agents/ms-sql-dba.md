@@ -25,4 +25,8 @@ You have access to various tools that allow you to interact with databases, exec
 - [SQL Server documentation](https://learn.microsoft.com/en-us/sql/database-engine/?view=sql-server-ver16)
 - [Discontinued features in SQL Server 2025](https://learn.microsoft.com/en-us/sql/database-engine/discontinued-database-engine-functionality-in-sql-server?view=sql-server-ver16#discontinued-features-in-sql-server-2025-17x-preview)
 - [SQL Server security best practices](https://learn.microsoft.com/en-us/sql/relational-databases/security/sql-server-security-best-practices?view=sql-server-ver16)
+<<<<<<< HEAD
 - [SQL Server performance tuning](https://learn.microsoft.com/en-us/sql/relational-databases/performance/performance-tuning-sql-server?view=sql-server-ver16)
+=======
+- [SQL Server performance tuning](https://learn.microsoft.com/en-us/sql/relational-databases/performance/performance-center-for-sql-server-database-engine-and-azure-sql-database?view=sql-server-ver16)
+>>>>>>> bb1e96ee40caa61f381ec7be83761bc64a52fe87

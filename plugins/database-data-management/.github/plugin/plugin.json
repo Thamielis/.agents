@@ -21,9 +21,16 @@
     "./agents"
   ],
   "skills": [
+<<<<<<< HEAD
     "./skills/sql-optimization",
     "./skills/sql-code-review",
     "./skills/postgresql-optimization",
     "./skills/postgresql-code-review"
+=======
+    "./skills/postgresql-code-review",
+    "./skills/postgresql-optimization",
+    "./skills/sql-code-review",
+    "./skills/sql-optimization"
+>>>>>>> bb1e96ee40caa61f381ec7be83761bc64a52fe87
   ]
 }
