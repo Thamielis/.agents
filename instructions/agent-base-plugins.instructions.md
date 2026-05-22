@@ -1,12 +1,12 @@
 ---
-description: 'Base plugin profile for PSArchitecture-style blank PowerShell module scaffolds'
+description: 'Base plugin profile for CliToolRegistry-style blank PowerShell module scaffolds'
 applyTo: '**'
 ---
 
 # Base Plugin Profile
 
 Use this profile when creating or maintaining a blank scaffold based on the
-PSArchitecture repository structure and build framework.
+CliToolRegistry repository structure and build framework.
 
 ## Scaffold Assumptions
 
@@ -22,7 +22,7 @@ PSArchitecture repository structure and build framework.
 
 ## Base Plugins
 
-Enable or prefer these plugins for every PSArchitecture-style scaffold when
+Enable or prefer these plugins for every CliToolRegistry-style scaffold when
 they are available in the active runtime:
 
 | Plugin | Required | Use For |

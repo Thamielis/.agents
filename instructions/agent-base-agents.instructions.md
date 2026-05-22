@@ -1,12 +1,12 @@
 ---
-description: 'Base custom agent profile for PSArchitecture-style blank PowerShell module scaffolds'
+description: 'Base custom agent profile for CliToolRegistry-style blank PowerShell module scaffolds'
 applyTo: '**'
 ---
 
 # Base Agent Profile
 
 Use this profile when creating or maintaining a blank scaffold based on the
-PSArchitecture repository structure and build framework.
+CliToolRegistry repository structure and build framework.
 
 ## Source Order
 
@@ -18,7 +18,7 @@ PSArchitecture repository structure and build framework.
 
 ## Base Agents
 
-Enable or prefer these custom agents for every PSArchitecture-style scaffold:
+Enable or prefer these custom agents for every CliToolRegistry-style scaffold:
 
 | Agent | Use For |
 | --- | --- |
@@ -37,7 +37,7 @@ Enable or prefer these custom agents for every PSArchitecture-style scaffold:
 | `se-system-architecture-reviewer.agent.md` | Architecture review and blueprint consistency |
 | `se-security-reviewer.agent.md` | Security review and hardening |
 
-## PSArchitecture Agent Routing
+## CliToolRegistry Agent Routing
 
 Use this routing table for normal scaffold work:
 

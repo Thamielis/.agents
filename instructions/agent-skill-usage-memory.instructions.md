@@ -4,7 +4,7 @@ applyTo: '**'
 
 # Agent Skill Usage Memory
 
-For PSArchitecture continuation work, when the user explicitly invokes the
+For CliToolRegistry continuation work, when the user explicitly invokes the
 Superpowers plugin together with `continual-learning` and `self-improving-agent`,
 load and apply those skills before implementation work.
 

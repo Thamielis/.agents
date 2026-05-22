@@ -1,12 +1,12 @@
 ---
-description: 'Base skill profile for PSArchitecture-style blank PowerShell module scaffolds'
+description: 'Base skill profile for CliToolRegistry-style blank PowerShell module scaffolds'
 applyTo: '**'
 ---
 
 # Base Skill Profile
 
 Use this profile when creating or maintaining a blank scaffold based on the
-PSArchitecture repository structure and build framework.
+CliToolRegistry repository structure and build framework.
 
 ## Source Order
 
@@ -42,7 +42,7 @@ Enable or prefer these skills for ordinary software engineering tasks:
 
 ## PowerShell Module Base Skills
 
-For a PSArchitecture-style scaffold, enable or prefer:
+For a CliToolRegistry-style scaffold, enable or prefer:
 
 | Skill | Source Preference | Use For |
 | --- | --- | --- |

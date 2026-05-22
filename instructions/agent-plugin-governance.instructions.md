@@ -6,9 +6,9 @@ applyTo: '**'
 # Agent Plugin Governance
 
 Use this instruction file to decide which plugins, custom agents, custom
-instructions, prompts, and skills are active for PSArchitecture work.
+instructions, prompts, and skills are active for CliToolRegistry work.
 
-For blank PSArchitecture-style scaffolds, also apply
+For blank CliToolRegistry-style scaffolds, also apply
 `.github/instructions/agent-base-plugins.instructions.md` as the reusable base
 plugin profile.
 
@@ -40,7 +40,7 @@ are available in the active agent runtime:
 | `gh-tools` | GitHub workflow hygiene, GFM validation, issue workflow helpers |
 | `link-tools` | Link validation for README, docs, generated help, and release notes |
 
-## PSArchitecture Default Plugins
+## CliToolRegistry Default Plugins
 
 For this repository, prefer this plugin set for normal module development,
 planning, testing, documentation, and release work:
@@ -57,7 +57,7 @@ planning, testing, documentation, and release work:
 | Recommended | `codex-security` | Supports external input validation and privileged-data review requirements |
 | Conditional | `Browser Use` | Use only for local web preview, rendered documentation, or browser-based validation |
 
-Do not treat `Build Web Apps`, `Figma`, or `Vercel` as PSArchitecture defaults.
+Do not treat `Build Web Apps`, `Figma`, or `Vercel` as CliToolRegistry defaults.
 Enable them only when the active task adds a web UI, design-system artifact,
 website deployment, or hosted preview.
 
@@ -112,7 +112,7 @@ During a rescan:
 
 - Enable the smallest plugin set that satisfies the current task and repository
   policy.
-- Prefer repository-default plugins for normal PSArchitecture work; add
+- Prefer repository-default plugins for normal CliToolRegistry work; add
   conditional plugins only when concrete task signals require them.
 - Disable or stop recommending a plugin when its task signal disappears, it
   creates noise, it overlaps with a better repo-default tool, or it requires
