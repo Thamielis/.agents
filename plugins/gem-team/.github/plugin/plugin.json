@@ -1,0 +1,33 @@
+{
+  "agents": [
+    "./agents"
+  ],
+  "author": {
+    "email": "mubaidr@gmail.com",
+    "name": "mubaidr",
+    "url": "https://github.com/mubaidr"
+  },
+  "description": "Multi-agent orchestration framework for spec-driven development and automated verification.",
+  "keywords": [
+    "multi-agent",
+    "orchestration",
+    "tdd",
+    "testing",
+    "e2e",
+    "devops",
+    "security-audit",
+    "code-review",
+    "prd",
+    "mobile"
+  ],
+<<<<<<< HEAD
+  "agents": [
+    "./agents"
+  ]
+=======
+  "license": "Apache-2.0",
+  "name": "gem-team",
+  "repository": "https://github.com/mubaidr/gem-team",
+  "version": "1.13.0"
+>>>>>>> bb1e96ee40caa61f381ec7be83761bc64a52fe87
+}
