@@ -1,0 +1,175 @@
+---
+session_id: 019a59ae-c3a5-79f2-a32a-60c4f8821e3d
+date: 2025-11-06
+summary: "prefer to review first)
+- Monitor PR #3 CI; if green, merge into develop and mark WPFHEL‑13 Compl..."
+tags:
+  - agentops
+  - session
+  - 2025-11
+---
+
+# prefer to review first)
+- Monitor PR #3 CI; if green, merge into develop and mark WPFHEL‑13 Compl...
+
+**Session:** 019a59ae-c3a5-79f2-a32a-60c4f8821e3d
+**Date:** 2025-11-06
+
+## Decisions
+- prefer to review first)
+- Monitor PR #3 CI; if green, merge into develop and mark WPFHEL‑13 Completed.
+- Start WPFHEL‑14 (Help rendering skeleton):
+  - Add Get-HelpExplorerHelpModel to normalize...
+- SelectedModule, HelpModel, and a Filter query property.
+  - Adapt current handlers to call into ViewModel, preparing for richer binding.
+- WPFHEL-19: Basic error notification surface:
+  - Capture...
+- selected; still non-blocking and updates the ViewModel’s `HelpText`.
+  - Tests:
+    - Added `src/Tests/Unit/Help-Formatting.Tests.ps1` to validate formatter output structure.
+
+**Build/Tests**
+-...
+
+## Knowledge
+- https://aka.ms/psstyle) strictly.
+- Always use approved Verbs for functions ('<Verb-Noun>')
+- One function per file starting with full comment-based help preceding the function.
+- Prefer strong...
+- til all tests pass.
+- **Reflection & Validation:** Review the solution, test edge cases, and add tests for uncovered logic.
+- **Documentation & Changelog:**
+  - Update all relevant documentation...
+- til functions exist.
+- AGENTS.md (and project-doc) require: one function per file with full comment-based help, Pester tests per function, and changelog updates—none are present yet.
+- Versioning:...
+- tilled from Architecture/Tech in the plan.
+  - `memory-bank/activeContext.md` and `progress.md` to track current status and next steps.
+  - `memory-bank/tasks/_index.md` with per-task files as we...
+- til this is complete
+- **Related**: Work that shares context but not blocking
+- **Prerequisite**: Required infrastructure or setup work
+- **Parallel**: Work that can proceed simultaneously
+
+####...
+- https://mellunig.atlassian.net/wiki/spaces/WPFHEL/pages/66191366
+- Created Jira issues in project WPFHEL and set the hierarchy with links:
+  - Epic: WPFHEL-2 — “MVP: Non-Blocking WPF Shell”
+  -...
+- till pass.
+
+**Changelog Entry**
+- CHANGELOG.md (Unreleased)
+  - Added: module bootstrap for non-blocking WPF UI (Show-WPFHelpExplorer, Stop-WPFHelpExplorer).
+  - Added: runspace helpers...
+- https://mellunig.atlassian.net/wiki/spaces/WPFHEL/pages/66191366
+- Memory Bank updated (task index with real keys).
+
+Would you like me to:
+- Add acceptance checklist items to each Jira issue from...
+- https://mellunig.atlassian.net/wiki/spaces/WPFHEL/pages/66322433
+- All issues already cross-linked to the plan page.
+
+**GitHub**
+- Created branch: feature/WPFHEL-2-mvp-non-blocking-ui
+- Pushed...
+- https://github.com/In-Pro-Org/WPFHelpExplorer/pull/2
+  - Commit: feat(layout): WPFHEL-6 base two-pane layout via Get-HelpExplorerXaml; Show-* uses layout function; add tests
+
+**Next**
+- Proceed to...
+- til existing tasks are completed, valid and without error and next steps have to be planned. Validate all parts and systems are on actual status and synced accordingly. Always update tasks status. if...
+- til also valid and merged.
+- refer to review first)
+- Monitor PR #3 CI; if green, merge into develop and mark WPFHEL‑13 Completed.
+- Start WPFHEL‑14 (Help rendering skeleton):
+  - Add Get-HelpExplorerHelpModel to normalize basic...
+- til the MVP scope you outlined is complete.
+- til we complete remaining MVP scope.
+- Confluence
+  - I will append an Execution Log entry summarizing the tree, help pane wiring, and search model merges.
+- Memory Bank
+  - Updated tasks/_index.md...
+- til completeness.
+- till non-blocking and updates the ViewModel’s `HelpText`.
+  - Tests:
+    - Added `src/Tests/Unit/Help-Formatting.Tests.ps1` to validate formatter output structure.
+
+**Build/Tests**
+- Current status:...
+- till non-blocking and updates ViewModel.HelpText.
+  - Restored/added public functions to keep module surface consistent for tests:
+    - `Get-HelpExplorerModuleRoots`, `Get-HelpExplorerModules`
+    -...
+- till works.
+
+Want me to begin WPFHEL-22 now?
+- til you fully understand the framework.
+
+## Files Changed
+- `README.md`
+
+## Issues
+- `git-flow`
+- `add-more-logging`
+- `and-smart-commits`
+- `dry-run`
+- `on-failure`
+- `dot-sources`
+- `in-process`
+- `per-task`
+- `of-work`
+- `to-end`
+- `mvp-non-blocking`
+- `two-pane`
+- `dot-source`
+- `to-date`
+- `re-ran`
+- `de-couple`
+- `re-push`
+- `re-import`
+- `go-ahead`
+- `the-flag`
+- `one-click`
+
+## Tool Usage
+
+| Tool | Count |
+|------|-------|
+| list_mcp_resources | 1 |
+| mcp__atlassian__confluence_add_comment | 5 |
+| mcp__atlassian__confluence_add_label | 8 |
+| mcp__atlassian__confluence_create_page | 11 |
+| mcp__atlassian__confluence_get_page | 2 |
+| mcp__atlassian__confluence_update_page | 2 |
+| mcp__atlassian__jira_add_comment | 22 |
+| mcp__atlassian__jira_add_worklog | 21 |
+| mcp__atlassian__jira_batch_create_issues | 8 |
+| mcp__atlassian__jira_create_issue | 2 |
+| mcp__atlassian__jira_create_issue_link | 6 |
+| mcp__atlassian__jira_create_remote_issue_link | 8 |
+| mcp__atlassian__jira_get_all_projects | 1 |
+| mcp__atlassian__jira_get_issue | 1 |
+| mcp__atlassian__jira_get_project_issues | 1 |
+| mcp__atlassian__jira_get_transitions | 5 |
+| mcp__atlassian__jira_link_to_epic | 11 |
+| mcp__atlassian__jira_transition_issue | 28 |
+| mcp__filesystem__read_multiple_files | 1 |
+| mcp__github-official__add_issue_comment | 2 |
+| mcp__github-official__create_branch | 6 |
+| mcp__github-official__create_pull_request | 13 |
+| mcp__github-official__get_file_contents | 1 |
+| mcp__github-official__get_me | 1 |
+| mcp__github-official__list_branches | 1 |
+| mcp__github-official__merge_pull_request | 15 |
+| mcp__github-official__pull_request_read | 18 |
+| mcp__github-official__push_files | 11 |
+| mcp__github-official__update_pull_request_branch | 3 |
+| shell | 293 |
+| update_plan | 5 |
+
+## Tokens
+
+- **Input:** 0
+- **Output:** 0
+- **Total:** ~869161 (estimated)

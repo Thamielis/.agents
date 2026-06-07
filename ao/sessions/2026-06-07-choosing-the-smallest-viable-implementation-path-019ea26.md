@@ -1,0 +1,73 @@
+---
+session_id: 019ea266-91b5-76e1-9e37-6705fff3ceab
+date: 2026-06-07
+summary: "choosing the smallest viable implementation path: standalone PowerShell parsing with regex scope ..."
+tags:
+  - agentops
+  - session
+  - 2026-06
+---
+
+# choosing the smallest viable implementation path: standalone PowerShell parsing with regex scope ...
+
+**Session:** 019ea266-91b5-76e1-9e37-6705fff3ceab
+**Date:** 2026-06-07
+
+## Decisions
+- choosing the smallest viable implementation path: standalone PowerShell parsing with regex scope captures, because the available tree-sitter package would force a runtime ABI upgrade. I’m checking...
+
+## Knowledge
+- til checks pass. Adapt to this repo: `cd gitnexus && npm test` before commit.
+
+## Context budget
+
+Commands and gotchas live under **Repo reference** below and in...
+- till following the AgentOps plan/implement workflow manually. The repo guardrails emphasize impact analysis, but I need to verify whether the GitNexus MCP/CLI impact tools are callable in this...
+- till try package-local commands for any available analysis path.
+- til `SupportedLanguages.PowerShell`, detection mappings, and `processPowerShell` exist, which gives a clean red target.
+- tils.test.ts`\\n  - Add `getLanguageFromFilename()` coverage for `.ps1`, probably `.psm1`, `.psd1`.\\n  - Add `getSyntaxLanguageFromFilename()` expectation if syntax map uses `powershell`.\\n  - Add...
+- tils.test.ts`. Since this implementation is standalone rather than tree-sitter-backed, I’ll use that detection test plus a new processor unit test instead of parser-loader/query-compilation tests.
+- till stays quiet, I’ll proceed from the compiler-level failures the new imports necessarily introduce.
+- till implement the failing test targets and then use TypeScript/test commands as far as the environment allows.
+- failed because the package dependencies are not installed, and `npx` fell back to the wrong `tsc` package. I’m going to install from the lockfile with scripts disabled first, which should give us...
+- tils` suite is blocked by an existing optional `tree-sitter-kotlin` native binding issue under Node 26 after scripts-disabled install. Typecheck shows one real exhaustive table to fix:...
+- tils` test file. Then I’ll rerun typecheck to confirm the PowerShell query table issue is gone, with only environment/native optional grammar issues remaining if any.
+- till complain about optional Swift/Dart modules because I installed with scripts disabled; I’m going to run the package postinstall once to materialize vendored grammars, then rerun validation.
+- til that finishes so validation reflects the intended local setup.
+- till satisfy TypeScript.
+- till running after the first 30 seconds, so I’m waiting for completion rather than leaving a test process behind.
+- till running and has already surfaced unrelated environment-sensitive failures in LadybugDB/CLI context suites. I’m polling it to completion so there is no lingering process before I summarize.
+- till running and is dominated by pre-existing environment/build setup failures: missing `dist/cli/index.js`, missing native grammar bindings, and LadybugDB tests. I’m polling once more for the final...
+- till matter.
+- tility test already exposed an existing native Kotlin binding issue in this Node 26 setup, so I’m not treating that as a feature regression.
+- til staged.
+- failed because no indexed repos were present. Running `analyze` is currently blocked by the existing `tree-sitter-kotlin` native binding issue on Node 26. Full `npm test` also fails on existing...
+- tility tests for PowerShell detection/provider coverage: [ingestion-utils.test.ts](C:/Users/mario/GitHub/GitNexus/gitnexus/test/unit/ingestion-utils.test.ts:1)
+
+Validation:
+- `cd gitnexus-shared &&...
+
+## Issues
+- `re-weights`
+- `pr-swarm-review`
+- `pre-commit`
+- `and-replace`
+- `by-step`
+- `ci-quality`
+- `re-sent`
+- `dot-source`
+
+## Tool Usage
+
+| Tool | Count |
+|------|-------|
+| exec | 68 |
+| followup_task | 1 |
+| spawn_agent | 3 |
+| wait | 46 |
+
+## Tokens
+
+- **Input:** 0
+- **Output:** 0
+- **Total:** ~439659 (estimated)

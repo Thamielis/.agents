@@ -1,0 +1,1 @@
+{"session_id":"019e9d8e-155c-7111-bb06-08f2fa4f67ce","date":"2026-06-06","summary":"Session from 2026-06-06","issues":["non-login"],"tool_calls":{"exec":10,"spawn_agent":8,"wait":5},"tokens":{"input":0,"output":0,"total":45579},"transcript_path":"C:\\Users\\mario\\.codex\\sessions\\2026\\06\\06\\rollout-2026-06-06T17-30-00-019e9d8e-155c-7111-bb06-08f2fa4f67ce.jsonl"}
