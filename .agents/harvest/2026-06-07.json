@@ -1,0 +1,29 @@
+{
+  "schema_version": 2,
+  "timestamp": "2026-06-07T19:56:37.9094132Z",
+  "rigs_scanned": 0,
+  "total_files": 0,
+  "roots": [
+    "C:\\Users\\mario\\gt"
+  ],
+  "include_dirs": [
+    "learnings",
+    "patterns",
+    "research"
+  ],
+  "promote_to": "C:\\Users\\mario\\.agents\\learnings",
+  "min_confidence": 0.5,
+  "artifacts": null,
+  "duplicates": null,
+  "promoted": null,
+  "summary": {
+    "artifacts_extracted": 0,
+    "unique_artifacts": 0,
+    "duplicate_groups": 0,
+    "duplicate_artifacts": 0,
+    "duplicate_excess": 0,
+    "promotion_candidates": 0,
+    "promotion_writes": 0,
+    "warning_count": 0
+  }
+}
